@@ -1,16 +1,50 @@
-# React + Vite
+# JavaScript AI IDE
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A browser-based JavaScript IDE with AI-powered code completion, built with React and Monaco Editor.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **AI Code Completion**: Powered by Hugging Face Transformers (codegen-350M-mono) running in a Web Worker
+- **Monaco Editor**: Full-featured code editor with syntax highlighting and IntelliSense
+- **File Management**: Create, rename, and delete multiple JavaScript files
+- **Customization**: Toggle between light/dark themes and adjust font family and size
+- **Persistence**: Files are automatically saved to browser localStorage
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Installation
 
-## Expanding the ESLint configuration
+```bash
+npm install
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Development
+
+```bash
+npm run dev
+```
+
+### Build
+
+```bash
+npm run build
+```
+
+### Deploy
+
+```bash
+npm run deploy
+```
+
+## Tech Stack
+
+- **React 19** - UI framework
+- **Monaco Editor** - Code editor
+- **Hugging Face Transformers** - AI model for code completion
+- **Vite** - Build tool
+- **Web Workers** - Background AI processing
+
+## Live Demo
+
+Visit the [live demo](https://moyerdestroyer.github.io/js-ai-ide) on GitHub Pages.
+
