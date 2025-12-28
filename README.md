@@ -1,6 +1,6 @@
 # JavaScript AI IDE
 
-A browser-based JavaScript IDE with AI-powered code completion, built with React and Monaco Editor.
+A browser-based JavaScript IDE with AI-powered code completion courtesy of Transformer.js, built with React and Monaco Editor.
 
 ## Features
 
@@ -28,12 +28,6 @@ npm run dev
 
 ```bash
 npm run build
-```
-
-### Deploy
-
-```bash
-npm run deploy
 ```
 
 ## Tech Stack

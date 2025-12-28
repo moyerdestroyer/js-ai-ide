@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Editor from "@monaco-editor/react";
 import "./App.css";
 import {
@@ -20,10 +20,15 @@ function App() {
   const [isModelLoading, setIsModelLoading] = useState(false);
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [isGeneratingCompletion, setIsGeneratingCompletion] = useState(false);
+  const [outputPanelHeight, setOutputPanelHeight] = useState(200);
+  const [output, setOutput] = useState([]);
+  const [isResizing, setIsResizing] = useState(false);
   const editorRef = useRef(null);
   const completionTimeoutRef = useRef(null);
   const monacoRef = useRef(null);
   const providerRegisteredRef = useRef(false);
+  const resizeStartYRef = useRef(0);
+  const resizeStartHeightRef = useRef(0);
 
   // Load files from localStorage on mount
   useEffect(() => {
@@ -193,11 +198,165 @@ function App() {
     setTheme((prevTheme) => (prevTheme === "vs-dark" ? "vs" : "vs-dark"));
   };
 
+  const downloadFile = () => {
+    if (!activeFile) return;
+
+    const content = activeFile.content;
+    const fileName = activeFile.name.endsWith('.js') 
+      ? activeFile.name 
+      : `${activeFile.name}.js`;
+    
+    // Create a blob with the file content
+    const blob = new Blob([content], { type: 'text/javascript' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create a temporary anchor element and trigger download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    
+    // Cleanup
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const runCode = useCallback(() => {
+    if (!activeFile) return;
+
+    const code = activeFile.content;
+    const outputLines = [];
+    
+    // Capture console methods
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+    const originalInfo = console.info;
+    
+    const captureOutput = (method, prefix) => {
+      return (...args) => {
+        const output = args.map(arg => {
+          if (typeof arg === 'object') {
+            try {
+              return JSON.stringify(arg, null, 2);
+            } catch (e) {
+              return String(arg);
+            }
+          }
+          return String(arg);
+        }).join(' ');
+        outputLines.push({ type: method, message: output, prefix });
+        originalLog(...args); // Still log to browser console
+      };
+    };
+
+    console.log = captureOutput('log', '');
+    console.error = captureOutput('error', 'Error:');
+    console.warn = captureOutput('warn', 'Warning:');
+    console.info = captureOutput('info', 'Info:');
+
+    try {
+      // Execute the code
+      const func = new Function(code);
+      const result = func();
+      
+      // If the code returns a value, display it
+      if (result !== undefined) {
+        outputLines.push({ 
+          type: 'result', 
+          message: typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result),
+          prefix: 'Result:'
+        });
+      }
+    } catch (error) {
+      outputLines.push({ 
+        type: 'error', 
+        message: error.message,
+        prefix: 'Error:'
+      });
+    } finally {
+      // Restore original console methods
+      console.log = originalLog;
+      console.error = originalError;
+      console.warn = originalWarn;
+      console.info = originalInfo;
+    }
+
+    setOutput(outputLines);
+  }, [activeFile]);
+
+  // Keyboard shortcut for Run (Ctrl+Enter)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        runCode();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [runCode]);
+
+  const handleResizeStart = (e) => {
+    setIsResizing(true);
+    resizeStartYRef.current = e.clientY;
+    resizeStartHeightRef.current = outputPanelHeight;
+    e.preventDefault();
+  };
+
+  useEffect(() => {
+    const handleResizeMove = (e) => {
+      if (!isResizing) return;
+      
+      const deltaY = resizeStartYRef.current - e.clientY; // Inverted because we're resizing from bottom
+      const newHeight = Math.max(100, Math.min(600, resizeStartHeightRef.current + deltaY));
+      setOutputPanelHeight(newHeight);
+    };
+
+    const handleResizeEnd = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleResizeMove);
+      document.addEventListener('mouseup', handleResizeEnd);
+      document.body.style.cursor = 'row-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleResizeMove);
+      document.removeEventListener('mouseup', handleResizeEnd);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing, outputPanelHeight]);
+
   return (
     <div className="ide-container">
       <div className="ide-header">
         <div className="ide-title-container">
           <div className="ide-title">JavaScript IDE</div>
+          <a
+            href="https://github.com/moyerdestroyer/js-ai-ide"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="github-link"
+            title="View on GitHub"
+          >
+            <svg
+              className="github-icon"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+          </a>
           {isModelLoading && (
             <div className="model-loading-indicator">
               <span className="loading-text">
@@ -215,6 +374,12 @@ function App() {
           )}
         </div>
         <div className="ide-controls">
+          <button onClick={runCode} className="btn btn-run" title="Run code (Ctrl+Enter)">
+            ▶ Run
+          </button>
+          <button onClick={downloadFile} className="btn btn-secondary" title="Download current file as .js">
+            ⬇ Download
+          </button>
           <button onClick={createNewFile} className="btn btn-primary">
             + New File
           </button>
@@ -316,7 +481,7 @@ function App() {
           ))}
         </div>
 
-        <div className="editor-container">
+        <div className="editor-container" style={{ height: `calc(100% - ${outputPanelHeight}px)` }}>
           {activeFile && (
             <Editor
               height="100%"
@@ -349,6 +514,35 @@ function App() {
               }}
             />
           )}
+        </div>
+
+        <div className="output-panel-container" style={{ height: `${outputPanelHeight}px` }}>
+          <div 
+            className="output-resize-handle"
+            onMouseDown={handleResizeStart}
+          />
+          <div className="output-panel-header">
+            <span>Output</span>
+            <button 
+              className="output-clear-btn"
+              onClick={() => setOutput([])}
+              title="Clear output"
+            >
+              Clear
+            </button>
+          </div>
+          <div className="output-panel-content">
+            {output.length === 0 ? (
+              <div className="output-empty">No output yet. Click "Run" to execute your code.</div>
+            ) : (
+              output.map((line, index) => (
+                <div key={index} className={`output-line output-line-${line.type}`}>
+                  {line.prefix && <span className="output-prefix">{line.prefix}</span>}
+                  <span className="output-message">{line.message}</span>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
