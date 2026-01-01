@@ -23,12 +23,14 @@ function App() {
   const [outputPanelHeight, setOutputPanelHeight] = useState(200);
   const [output, setOutput] = useState([]);
   const [isResizing, setIsResizing] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const editorRef = useRef(null);
   const completionTimeoutRef = useRef(null);
   const monacoRef = useRef(null);
   const providerRegisteredRef = useRef(false);
   const resizeStartYRef = useRef(0);
   const resizeStartHeightRef = useRef(0);
+  const settingsMenuRef = useRef(null);
 
   // Load files from localStorage on mount
   useEffect(() => {
@@ -119,6 +121,27 @@ function App() {
       localStorage.setItem("ide-files", JSON.stringify(files));
     }
   }, [files]);
+
+  // Close settings menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        settingsMenuRef.current &&
+        !settingsMenuRef.current.contains(event.target) &&
+        isSettingsOpen
+      ) {
+        setIsSettingsOpen(false);
+      }
+    };
+
+    if (isSettingsOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isSettingsOpen]);
 
   const activeFile = files.find((f) => f.id === activeFileId);
 
@@ -240,7 +263,7 @@ function App() {
           if (typeof arg === 'object') {
             try {
               return JSON.stringify(arg, null, 2);
-            } catch (e) {
+            } catch {
               return String(arg);
             }
           }
@@ -373,53 +396,64 @@ function App() {
             </div>
           )}
         </div>
-        <div className="ide-controls">
-          <button onClick={runCode} className="btn btn-run" title="Run code (Ctrl+Enter)">
-            ▶ Run
+        <div className="ide-controls-wrapper" ref={settingsMenuRef}>
+          <button 
+            className="settings-gear-btn"
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            title="Settings"
+            aria-label="Settings"
+          >
+            <svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24" height="24">
+              <path class="cls-1" d="M44 28v-8h-5.56A14.89 14.89 0 0 0 37 16.61l4-3.92L35.31 7l-3.92 4A14.89 14.89 0 0 0 28 9.56V4h-8v5.56A14.89 14.89 0 0 0 16.61 11l-3.92-4L7 12.69l4 3.92A14.89 14.89 0 0 0 9.56 20H4v8h5.56A14.89 14.89 0 0 0 11 31.39l-4 3.92L12.69 41l3.92-4A14.89 14.89 0 0 0 20 38.44V44h8v-5.56A14.89 14.89 0 0 0 31.39 37l3.92 4L41 35.31l-4-3.92A14.89 14.89 0 0 0 38.44 28z"/>
+              <circle class="cls-1" cx="24" cy="24" r="10"/>
+            </svg>
           </button>
-          <button onClick={downloadFile} className="btn btn-secondary" title="Download current file as .js">
-            ⬇ Download
-          </button>
-          <button onClick={createNewFile} className="btn btn-primary">
-            + New File
-          </button>
-          <div className="theme-toggle">
+          <div className={`ide-controls ${isSettingsOpen ? 'open' : ''}`}>
+            <button onClick={runCode} className="btn btn-run" title="Run code (Ctrl+Enter)">
+              ▶ Run
+            </button>
+            <button onClick={downloadFile} className="btn btn-secondary" title="Download current file as .js">
+              🗁 Save
+            </button>
+            <button onClick={createNewFile} className="btn btn-primary">
+              + New
+            </button>
             <button onClick={toggleTheme} className="btn btn-secondary">
               {theme === "vs-dark" ? "☀️ Light" : "🌙 Dark"}
             </button>
-          </div>
-          <div className="font-controls">
-            <label>
-              Font:
-              <select
-                value={fontFamily}
-                onChange={(e) => setFontFamily(e.target.value)}
-                className="font-select"
-              >
-                <option value='Consolas, "Courier New", monospace'>
-                  Consolas
-                </option>
-                <option value='Monaco, "Courier New", monospace'>Monaco</option>
-                <option value='"Fira Code", "Courier New", monospace'>
-                  Fira Code
-                </option>
-                <option value='"Source Code Pro", "Courier New", monospace'>
-                  Source Code Pro
-                </option>
-                <option value='"Courier New", monospace'>Courier New</option>
-              </select>
-            </label>
-            <label>
-              Size:
-              <input
-                type="number"
-                min="10"
-                max="24"
-                value={fontSize}
-                onChange={(e) => setFontSize(Number(e.target.value))}
-                className="font-size-input"
-              />
-            </label>
+            <div className="font-controls">
+              <label>
+                Font:
+                <select
+                  value={fontFamily}
+                  onChange={(e) => setFontFamily(e.target.value)}
+                  className="font-select"
+                >
+                  <option value='Consolas, "Courier New", monospace'>
+                    Consolas
+                  </option>
+                  <option value='Monaco, "Courier New", monospace'>Monaco</option>
+                  <option value='"Fira Code", "Courier New", monospace'>
+                    Fira Code
+                  </option>
+                  <option value='"Source Code Pro", "Courier New", monospace'>
+                    Source Code Pro
+                  </option>
+                  <option value='"Courier New", monospace'>Courier New</option>
+                </select>
+              </label>
+              <label>
+                Size:
+                <input
+                  type="number"
+                  min="10"
+                  max="24"
+                  value={fontSize}
+                  onChange={(e) => setFontSize(Number(e.target.value))}
+                  className="font-size-input"
+                />
+              </label>
+            </div>
           </div>
         </div>
       </div>
