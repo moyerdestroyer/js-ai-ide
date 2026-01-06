@@ -14,7 +14,7 @@ export const COMPLETION_CONFIG = {
   // Maximum tokens to generate
   MAX_NEW_TOKENS: 60,
   // Temperature for generation (lower = more deterministic)
-  TEMPERATURE: 0.1,
+  TEMPERATURE: 0.3,
   // Minimum prompt length to trigger completion
   MIN_PROMPT_LENGTH: 20,
 };
